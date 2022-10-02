@@ -54,7 +54,7 @@ for key in molecules:
 
 
 def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
-    ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=100, defaults=defaults, radius=radius)
+    ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=500, defaults=defaults, radius=radius)
     if ret is not None:
         plm, bonds, angles, dihedrals = ret
         for m in meta.nodes:  # remove atoms in side productions
@@ -80,7 +80,7 @@ def main(mols, box, meta, default_types=None):
     for ele in all_elements:
         cache[ele] = m.dict()
         missing_types[ele] = m.dict()
-    with Pool(20) as p:
+    with Pool() as p:
         for i, molecule in enumerate(mols):
             p.apply_async(processing, args=(i, molecule, box, missing_types, cache, meta[i], default_types))
         p.close()
