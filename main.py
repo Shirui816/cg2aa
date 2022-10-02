@@ -115,4 +115,5 @@ if __name__ == "__main__":
     meta = reactor.meta
     [Chem.SanitizeMol(_) for _ in aa_mols]
     aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
+    print(f"{len(aa_mols_h)} molecules!")
     main(aa_mols_h, box, meta)

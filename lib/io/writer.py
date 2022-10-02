@@ -144,4 +144,5 @@ def write_xml(molecule, box, bonds, angles, dihedrals, postfix, program='galamos
             bond=bond, charge=charge, angle=angle, dihedral=dihedral, n_angles=n_angles, n_dihedrals=n_dihedrals,
             monomer_id=monomer_id, program=program, version=version, lx=lx, ly=ly, lz=lz, xy=xy, xz=xz, yz=yz
         ))
+    o.close()
     return
