@@ -2,6 +2,8 @@ __doc__ = r"""
 An example for pfr chains.
 """
 
+from multiprocessing import Manager
+from multiprocessing import Pool
 from sys import argv
 
 from rdkit import Chem
@@ -48,50 +50,67 @@ reaction_template = {
     }
 }
 
-xml = XmlParser(argv[1])
-box = (xml.box.lx, xml.box.ly, xml.box.lz, xml.box.xy, xml.box.xz, xml.box.yz)
-box = tuple(map(float, box))
 
-cg_sys, cg_mols = read_cg_topology(xml, molecules)
-reactor = Reactor(molecules, reaction_template)
-# find tri / di reactions for PFR
-reactions = []
-for monomer in cg_sys.nodes:
-    _type = cg_sys.nodes[monomer]['type']
-    if _type in ['B']:
-        if len(cg_sys.adj[monomer]) == 2:
-            a, b = list(cg_sys.adj[monomer])
-            reactions.append(('tri', a, b, monomer))
-        elif len(cg_sys.adj[monomer]) == 1:
-            a = list(cg_sys.adj[monomer])[0]
-            reactions.append(('di', a, monomer))
-
-reactor.process(cg_mols, reactions)
-aa_mols = reactor.aa_molecules
-[Chem.SanitizeMol(_) for _ in aa_mols]
-aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
-aa_mols_h = [set_molecule_id_for_h(mh) for mh in aa_mols_h]
-
-default_types = None
-
-
-def processing(i, mol, box, mt, ch, defaults=None, radius=None):
+def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
     ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=100, defaults=defaults, radius=radius)
     if ret is not None:
-        plm_h_ff, bonds, angles, dihedrals = ret
-        write_xml(plm_h_ff, box, bonds, angles, dihedrals, '%06d' % i)
+        plm, bonds, angles, dihedrals = ret
+        for m in meta.nodes:  # remove atoms in side productions
+            molecule = meta.nodes[m]
+            for idx in molecule['atom_idx'].values():
+                atom = plm.GetAtomWithIdx(idx)
+                atom.SetIntProp('molecule_id', int(m))
+        plm = set_molecule_id_for_h(plm)
+        write_xml(plm, box, bonds, angles, dihedrals, '%06d' % i)
     # mol = Chem.AddHs(mol)
     # AllChem.EmbedMolecule(mol)
     # pdb = Chem.MolToPDBFile(mol, '%06d.pdb' % i)
 
 
-def main(mols, box):
-    cache = dict()
-    missing_types = dict()
-    for i, molecule in enumerate(mols):
-        processing(i, molecule, box, missing_types, cache)
+def main(mols, box, meta, default_types=None):
+    all_elements = set()
+    for mol in mols:
+        for atom in mol.GetAtoms():
+            all_elements.add(atom.GetSymbol())
+    m = Manager()
+    cache = m.dict()
+    missing_types = m.dict()
+    for ele in all_elements:
+        cache[ele] = m.dict()
+        missing_types[ele] = m.dict()
+    with Pool(20) as p:
+        for i, molecule in enumerate(mols):
+            p.apply_async(processing, args=(i, molecule, box, missing_types, cache, meta[i], default_types))
+        p.close()
+        p.join()
+    missing_types = dict(missing_types)
+    for ele in all_elements:
+        missing_types[ele] = dict(missing_types[ele])
     print_missing_type(missing_types)
 
 
 if __name__ == "__main__":
-    main(aa_mols_h, box)
+    xml = XmlParser(argv[1])
+    box = (xml.box.lx, xml.box.ly, xml.box.lz, xml.box.xy, xml.box.xz, xml.box.yz)
+    box = tuple(map(float, box))
+
+    cg_sys, cg_mols = read_cg_topology(xml, molecules)
+    reactor = Reactor(molecules, reaction_template)
+    # find tri / di reactions for PFR
+    reactions = []
+    for monomer in cg_sys.nodes:
+        _type = cg_sys.nodes[monomer]['type']
+        if _type in ['B']:
+            if len(cg_sys.adj[monomer]) == 2:
+                a, b = list(cg_sys.adj[monomer])
+                reactions.append(('tri', a, b, monomer))
+            elif len(cg_sys.adj[monomer]) == 1:
+                a = list(cg_sys.adj[monomer])[0]
+                reactions.append(('di', a, monomer))
+
+    reactor.process(cg_mols, reactions)
+    aa_mols = reactor.aa_molecules
+    meta = reactor.meta
+    [Chem.SanitizeMol(_) for _ in aa_mols]
+    aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
+    main(aa_mols_h, box, meta)

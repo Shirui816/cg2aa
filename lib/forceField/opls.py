@@ -104,6 +104,7 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
     defaults = kwargs.get('defaults')
     fc = 0
     # check after auto-type
+    failed = False
     for atom in molecule.GetAtoms():
         try:
             # print("Atom {0} has {1}".format(at.GetIdx(), at.GetProp('AtomType')))
@@ -126,9 +127,9 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
             atom.SetProp("ChemEnv", chem_env)
             if chem_envs.get(atom.GetSymbol()) is None:
                 chem_envs[atom.GetSymbol()] = {}
-                chem_envs[atom.GetSymbol()][chem_env] = _s
-
-    failed = False
+            chem_envs[atom.GetSymbol()][chem_env] = _s
+            if _s is None:
+                failed = True  # not found in database and no defaults
 
     if failed:
         return None
