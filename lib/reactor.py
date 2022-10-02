@@ -71,7 +71,7 @@ class Reactor(object):
         self.cg_molecules = cg_molecules
         reaction_hash = reaction_mol_mapping(reactions)  # build reaction hash: {node: set(reactions1,...)}
         for _i, cg_mol in enumerate(cg_molecules):
-            # generate per cg molecule, for remove atom is slow for large molecules
+            # generate per cg molecule, for removing atom is slow for large molecules
             # print(len(cg_mol.nodes), _i, len(cg_molecules))
             aa_mol = Chem.RWMol()
             mol_meta = nx.Graph()
