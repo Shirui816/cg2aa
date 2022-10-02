@@ -2,14 +2,14 @@ import os
 import re
 import warnings
 
+from rdkit import Chem
+
 
 def _warning(message, category=None, filename=None, lineno=None, file=None, line=None):
     print("WARNING: ", message)
 
 
 warnings.showwarning = _warning
-
-from rdkit import Chem
 
 this_dir, this_filename = os.path.split(__file__)
 opls_tpl_path = os.path.join(this_dir, "assets", "opls", "STaGE_opls_tomoltemplate_opls.txt")
@@ -21,7 +21,7 @@ opls_bonded_itp = os.path.join(this_dir, "assets", "opls", "bonded.itp")  # from
 
 def generate_feature_defn(fpath):
     info = {}
-    fdefn = ''
+    feature_defn = ''
     with open(fpath, 'r') as infile:
         feat_index = 0
         for line in [line.strip() for line in infile if line.strip()]:
@@ -30,76 +30,69 @@ def generate_feature_defn(fpath):
                 info[lttype] = (atomname, typename, chg, desc)
                 if el == 'nom':
                     continue
-                fdefn += \
+                feature_defn += \
                     """
                     DefineFeature {0} {1}
                     Family {2}{3}
                     EndFeature""".format(lttype, patt, feat_index, atomname)
                 # add new charge dictionary entry
                 feat_index += 1
-    return info, fdefn
+    return info, feature_defn
 
 
 def get_submol_rad_n(mol, radius, atom):
     env = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, atom.GetIdx(), useHs=True)
     amap = {}
-    submol = Chem.PathToSubmol(mol, env, atomMap=amap)
-    return submol, amap, env
+    sub_mol = Chem.PathToSubmol(mol, env, atomMap=amap)
+    return sub_mol, amap, env
 
 
-chem_envs = {}
-LARGE = 500
-chem_envs_cache = {}  # SMILES rooted at target atom is very good hash
-HASH_CUT = 3
-
-
-def get_type_from_cache(molecule, atom):
-    submol, submol_amap, subenv = get_submol_rad_n(molecule, HASH_CUT, atom)  # 3 is good enough for hash
-    atom_env_hash = Chem.MolToSmiles(submol, rootedAtAtom=submol_amap[atom.GetIdx()], canonical=False)
+def get_type_from_cache(molecule, atom, chem_envs_cache, hash_cut):
+    sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, hash_cut, atom)  # 3 is good enough for hash
+    atom_env_hash = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
     if chem_envs_cache.get(atom.GetSymbol()) is None:
         chem_envs_cache[atom.GetSymbol()] = {}
     atom_type = chem_envs_cache[atom.GetSymbol()].get(atom_env_hash)
     return atom_type, atom_env_hash
 
 
-def ff(molecule, **kwargs):
-    info, fdefn = generate_feature_defn(opls_tpl_path)
-    factory = Chem.ChemicalFeatures.BuildFeatureFactoryFromString(fdefn)
+def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **kwargs):
+    info, feature_defn = generate_feature_defn(opls_tpl_path)
+    factory = Chem.ChemicalFeatures.BuildFeatureFactoryFromString(feature_defn)
     radius = kwargs.get('radius') or 7
-    if molecule.GetNumAtoms() > LARGE:
+    if molecule.GetNumAtoms() > large:
         warnings.warn(f"Molecule too large, chemical env cut off for FF is set to {radius}, "
                       "cut off method may cause inaccuracy.")
         if radius < 7:
             warnings.warn(f"Chemical cutoff {radius} < 7, "
                           "please make sure fragment larger than the adj-Aromatic ring!")
         for _i, atom in enumerate(molecule.GetAtoms()):
-            # print(_i, molecule.GetNumAtoms())
+            # print(_i, mol.GetNumAtoms())
             # check cache first
-            atom_type, atom_env_hash = get_type_from_cache(molecule, atom)
-            if not atom_type is None:
+            atom_type, atom_env_hash = get_type_from_cache(molecule, atom, chem_envs_cache, hash_cut)
+            if atom_type is not None:
                 atom.SetProp('AtomType', atom_type)
                 continue
-            submol, submol_amap, subenv = get_submol_rad_n(molecule, radius, atom)  # no need to sanitize
-            for _atom in submol.GetAtoms():
+            sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, radius, atom)  # no need to sanitize
+            for _atom in sub_mol.GetAtoms():
                 if _atom.GetIsAromatic():
                     if not _atom.IsInRing():
                         _atom.SetIsAromatic(False)
-            try:
-                Chem.SanitizeMol(submol)
-            except:
-                subsmi = Chem.MolToSmiles(submol, rootedAtAtom=submol_amap[atom.GetIdx()], canonical=False)
+            res = Chem.SanitizeMol(sub_mol, catchErrors=True)
+            sub_smi = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
+            if res is not Chem.rdmolops.SanitizeFlags.SANITIZE_NONE:
                 warnings.warn(
-                    f"Molecule fragment {subsmi} is not SANITIZED, "
+                    f"Molecule fragment {sub_smi} is not SANITIZED: {res}"
                     "this may cause errors, re-check env cutoff and molecular size."
                 )
-            features = factory.GetFeaturesForMol(submol)
-            [submol.GetAtomWithIdx(f.GetAtomIds()[0]).SetProp('AtomType', f.GetType()) for f in features]
+            features = factory.GetFeaturesForMol(sub_mol)
+            [sub_mol.GetAtomWithIdx(f.GetAtomIds()[0]).SetProp('AtomType', f.GetType()) for f in features]
 
-            # submol_amap = {atom_idx: submol_idx}
+            # sub_mol_amap = {atom_idx: sub_mol_idx}
             try:
-                smid = submol_amap.get(atom.GetIdx())
-                if not smid is None:
-                    target_type = submol.GetAtomWithIdx(submol_amap.get(atom.GetIdx())).GetProp('AtomType')
+                sm_atom_id = sub_mol_amap.get(atom.GetIdx())
+                if sm_atom_id is not None:
+                    target_type = sub_mol.GetAtomWithIdx(sm_atom_id).GetProp('AtomType')
                     atom.SetProp('AtomType', target_type)
                     chem_envs_cache[atom.GetSymbol()][atom_env_hash] = target_type
             except KeyError:
@@ -118,14 +111,14 @@ def ff(molecule, **kwargs):
             atom.SetIntProp("ff_failed", 0)
         except KeyError:
             fc += 1
-            submol, submol_amap, subenv = get_submol_rad_n(molecule, HASH_CUT, atom)  # default chem_env is 3
-            chem_env = Chem.MolToSmiles(submol, rootedAtAtom=submol_amap[atom.GetIdx()], canonical=False)
+            sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, hash_cut, atom)  # default chem_env is 3
+            chem_env = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
             atom.SetIntProp("ff_failed", 1)
             _s = None
-            if not defaults is None:
+            if defaults is not None:
                 if not defaults.get(atom.GetSymbol()) is None:
                     atom_type = defaults.get(atom.GetSymbol()).get(chem_env)
-                    if not atom_type is None:
+                    if atom_type is not None:
                         atom.SetProp("AtomType", atom_type)
                         _s = info[atom_type][0] + ", " + info[atom_type][3]
                         atom.SetIntProp("ff_failed", 0)  # not failed if there is default type
@@ -136,27 +129,9 @@ def ff(molecule, **kwargs):
                 chem_envs[atom.GetSymbol()][chem_env] = _s
 
     failed = False
-    for ele in chem_envs:
-        for chem_env in chem_envs[ele]:
-            atom_type = chem_envs[ele][chem_env]
-            if not atom_type is None:
-                print(
-                    f"Chemical env for *{ele} -IN- *{chem_env} is NOT FOUND in database\n"
-                    f"Manually set as {atom_type}\n"
-                )
-    for ele in chem_envs:
-        for chem_env in chem_envs[ele]:
-            atom_type = chem_envs[ele][chem_env]
-            if atom_type is None:
-                failed = True
-                print(
-                    f"Chemical env for *{ele} -IN- *{chem_env} is "
-                    "NOT FOUND in database and there is no default type."
-                )
-                print(f"Please set default type with map key ``{chem_env}''")
 
     if failed:
-        raise ValueError("There are missing types!")
+        return None
 
     sum_of_charge = 0
     for atom in molecule.GetAtoms():

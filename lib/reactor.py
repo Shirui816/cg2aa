@@ -71,7 +71,7 @@ class Reactor(object):
         self.cg_molecules = cg_molecules
         reaction_hash = reaction_mol_mapping(reactions)  # build reaction hash: {node: set(reactions1,...)}
         for _i, cg_mol in enumerate(cg_molecules):
-            # generate per cg molecule, for removing atom is slow for large molecules
+            # generate per cg mol, for removing atom is slow for large molecules
             # print(len(cg_mol.nodes), _i, len(cg_molecules))
             aa_mol = Chem.RWMol()
             mol_meta = nx.Graph()
@@ -81,7 +81,7 @@ class Reactor(object):
                 atom_idx = {}  # global-local index hash
                 for r in reaction_hash[node]:
                     # get reactions for mol, reaction_hash = {node: set of reactions contain the node}
-                    # attach reaction to molecule if any of the monomers in the molecule is involved in the reaction
+                    # attach reaction to mol if any of the monomers in the mol is involved in the reaction
                     mol_reactions.add(r)
                 reactant = cg_mol.nodes[node]
                 reactant_molecule = Chem.MolFromSmiles(reactant['smiles'])

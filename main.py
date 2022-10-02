@@ -8,14 +8,11 @@ from rdkit import Chem
 
 from lib.cgTopology import read_cg_topology
 from lib.forceField.opls import ff
+from lib.forceField.printMissingType import print_missing_type
 from lib.io.writer import write_xml
 from lib.io.xmlParser import XmlParser
 from lib.reactor import Reactor
 from lib.utils import set_molecule_id_for_h
-
-xml = XmlParser(argv[1])
-box = (xml.box.lx, xml.box.ly, xml.box.lz, xml.box.xy, xml.box.xz, xml.box.yz)
-box = tuple(map(float, box))
 
 # ctl = ...
 # get molecules from control.in
@@ -51,9 +48,12 @@ reaction_template = {
     }
 }
 
+xml = XmlParser(argv[1])
+box = (xml.box.lx, xml.box.ly, xml.box.lz, xml.box.xy, xml.box.xz, xml.box.yz)
+box = tuple(map(float, box))
+
 cg_sys, cg_mols = read_cg_topology(xml, molecules)
 reactor = Reactor(molecules, reaction_template)
-
 # find tri / di reactions for PFR
 reactions = []
 for monomer in cg_sys.nodes:
@@ -72,18 +72,26 @@ aa_mols = reactor.aa_molecules
 aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
 aa_mols_h = [set_molecule_id_for_h(mh) for mh in aa_mols_h]
 
-defaults = None
+default_types = None
 
 
-def processing(i):
-    molecule = aa_mols_h[i]
-    plm_h_ff, bonds, angles, dihedrals = ff(molecule, defaults=defaults, radius=None)
-    write_xml(plm_h_ff, box, bonds, angles, dihedrals, '%06d' % i)
-    # mol = Chem.AddHs(molecule)
+def processing(i, mol, box, mt, ch, defaults=None, radius=None):
+    ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=100, defaults=defaults, radius=radius)
+    if ret is not None:
+        plm_h_ff, bonds, angles, dihedrals = ret
+        write_xml(plm_h_ff, box, bonds, angles, dihedrals, '%06d' % i)
+    # mol = Chem.AddHs(mol)
     # AllChem.EmbedMolecule(mol)
     # pdb = Chem.MolToPDBFile(mol, '%06d.pdb' % i)
 
 
+def main(mols, box):
+    cache = dict()
+    missing_types = dict()
+    for i, molecule in enumerate(mols):
+        processing(i, molecule, box, missing_types, cache)
+    print_missing_type(missing_types)
+
+
 if __name__ == "__main__":
-    for i in range(len(aa_mols_h)):
-        processing(i)
+    main(aa_mols_h, box)
