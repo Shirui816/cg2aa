@@ -19,23 +19,11 @@ from lib.utils import set_molecule_id_for_h
 # ctl = ...
 # get molecules from control.in
 
-
+# Read this part from file
 molecules = {
     'A': {'smiles': 'Oc1ccccc1', 'pdb': None},
     'B': {'smiles': 'C=O', 'pdb': None}
 }
-
-for key in molecules:
-    if not molecules[key]['pdb'] is None:
-        mol = Chem.RemoveAllHs(Chem.MolFromPDBFile(molecules[key]['pdb']))
-        molecules[key]['smiles'] = Chem.MolToSmiles(mol)
-
-# for key in molecules:
-#     mol = Chem.MolFromSmiles(molecules[key]['smiles'])
-#     mol = Chem.AddHs(mol)
-#     AllChem.EmbedMolecule(mol)
-#     pdb = Chem.MolToPDBFile(mol, '%s.pdb' % key)
-
 
 reaction_template = {
     'tri': {
@@ -49,6 +37,20 @@ reaction_template = {
         'prod_idx': [0]
     }
 }
+
+# End
+
+for key in molecules:
+    if not molecules[key]['pdb'] is None:
+        mol = Chem.RemoveAllHs(Chem.MolFromPDBFile(molecules[key]['pdb']))
+        molecules[key]['smiles'] = Chem.MolToSmiles(mol)
+
+
+# for key in molecules:
+#     mol = Chem.MolFromSmiles(molecules[key]['smiles'])
+#     mol = Chem.AddHs(mol)
+#     AllChem.EmbedMolecule(mol)
+#     pdb = Chem.MolToPDBFile(mol, '%s.pdb' % key)
 
 
 def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
