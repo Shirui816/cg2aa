@@ -104,7 +104,6 @@ def main(mols, box, meta, default_types=None):
         cache[ele] = m.dict()
         missing_types[ele] = m.dict()
     futures = {}
-    # with Pool() as p:
     with Executor() as e:
         for i, molecule in enumerate(mols):
             args = (i, molecule, box, missing_types, cache, meta[i], default_types)
