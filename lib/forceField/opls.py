@@ -60,6 +60,7 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
     info, feature_defn = generate_feature_defn(opls_tpl_path)
     factory = Chem.ChemicalFeatures.BuildFeatureFactoryFromString(feature_defn)
     radius = kwargs.get('radius') or 7
+    _chem_hash = {}
     if molecule.GetNumAtoms() > large:
         warnings.warn(f"Molecule too large, chemical env cut off for FF is set to {radius}, "
                       "cut off method may cause inaccuracy.")
@@ -67,10 +68,14 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
             warnings.warn(f"Chemical cutoff {radius} < 7, "
                           "please make sure fragment larger than the adj-Aromatic ring!")
         for _i, atom in enumerate(molecule.GetAtoms()):
-            # print(_i, mol.GetNumAtoms())
+            # print(_i, molecule.GetNumAtoms())
             # check cache first
             atom_type, atom_env_hash = get_type_from_cache(molecule, atom, chem_envs_cache, hash_cut)
+            _chem_hash[_i] = atom_env_hash
             if atom_type is not None:
+                # print('cached')
+                if atom_type == 'skip':
+                    continue
                 atom.SetProp('AtomType', atom_type)
                 continue
             sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, radius, atom)  # no need to sanitize
@@ -96,7 +101,7 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
                     atom.SetProp('AtomType', target_type)
                     chem_envs_cache[atom.GetSymbol()][atom_env_hash] = target_type
             except KeyError:
-                pass
+                chem_envs_cache[atom.GetSymbol()][atom_env_hash] = 'skip'
     else:
         features = factory.GetFeaturesForMol(molecule)
         [molecule.GetAtomWithIdx(f.GetAtomIds()[0]).SetProp('AtomType', f.GetType()) for f in features]
@@ -105,15 +110,17 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
     fc = 0
     # check after auto-type
     failed = False
-    for atom in molecule.GetAtoms():
+    for _i, atom in enumerate(molecule.GetAtoms()):
         try:
             # print("Atom {0} has {1}".format(at.GetIdx(), at.GetProp('AtomType')))
             _ = atom.GetProp("AtomType")
             atom.SetIntProp("ff_failed", 0)
         except KeyError:
             fc += 1
-            sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, hash_cut, atom)  # default chem_env is 3
-            chem_env = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
+            chem_env = _chem_hash.get(_i)
+            if chem_env is None:
+                sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, hash_cut, atom)  # default chem_env is 3
+                chem_env = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
             atom.SetIntProp("ff_failed", 1)
             _s = None
             if defaults is not None:

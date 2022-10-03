@@ -2,9 +2,11 @@ __doc__ = r"""
 An example for pfr chains.
 """
 
+from concurrent.futures import ThreadPoolExecutor as Executor  # io-bound
+from concurrent.futures import ProcessPoolExecutor as Executor  # cpu-bound jobs
 from multiprocessing import Manager
-from multiprocessing import Pool
 from sys import argv
+import os.path
 
 from rdkit import Chem
 
@@ -22,7 +24,7 @@ from lib.utils import set_molecule_id_for_h
 # Read this part from file
 molecules = {
     'A': {'smiles': 'Oc1ccccc1', 'pdb': None},
-    'B': {'smiles': 'C=O', 'pdb': None}
+    'B': {'smiles': 'N=NCC=O', 'pdb': None},  # not real molecule, for testing missing types
 }
 
 reaction_template = {
@@ -35,6 +37,22 @@ reaction_template = {
         'cg_reactant_list': [('A', 'B')],
         'smarts': "Oc1cccc[c:1]1.[C:2]=[O:3]>>Oc1cccc[c:1]1[C:2][O:3]",
         'prod_idx': [0]
+    }
+}
+
+defaults = {
+    'N': {
+        "N(=NC(C)([H])[H])[H]": "@atom:nnn",
+        "N(=N[H])C(C(c)(c)[H])([H])[H]": "@atom:nnn",
+        "N(=N[H])C(C(O)(c)[H])([H])[H]": "@atom:nnn",
+    },
+    'H': {
+        '[H]N=NC': "@atom:nnn",
+    },
+    'C': {
+        "C(N=N[H])(C(c(c)c)(c(c)c)[H])([H])[H]": "@atom:nnn",
+        "C(N=N[H])(C(O[H])(c(c)c)[H])([H])[H]": "@atom:nnn",
+        "C(N=N[H])(C(c(c)c)(O[H])[H])([H])[H]": "@atom:nnn",
     }
 }
 
@@ -54,16 +72,21 @@ for key in molecules:
 
 
 def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
+    f_name = f"out_{i:06d}.xml"
+    if os.path.isfile(f_name):  # skip existing files
+        return 2
     ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=500, defaults=defaults, radius=radius)
     if ret is not None:
         plm, bonds, angles, dihedrals = ret
-        for m in meta.nodes:  # remove atoms in side productions
+        for m in meta.nodes:  # set monomer id
             molecule = meta.nodes[m]
             for idx in molecule['atom_idx'].values():
                 atom = plm.GetAtomWithIdx(idx)
                 atom.SetIntProp('molecule_id', int(m))
         plm = set_molecule_id_for_h(plm)
         write_xml(plm, box, bonds, angles, dihedrals, '%06d' % i)
+        return 1
+    return 0
     # mol = Chem.AddHs(mol)
     # AllChem.EmbedMolecule(mol)
     # pdb = Chem.MolToPDBFile(mol, '%06d.pdb' % i)
@@ -71,24 +94,30 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
 
 def main(mols, box, meta, default_types=None):
     all_elements = set()
-    for mol in mols:
-        for atom in mol.GetAtoms():
+    for _mol in mols:
+        for atom in _mol.GetAtoms():
             all_elements.add(atom.GetSymbol())
-    m = Manager()
+    m = Manager()  # parallel-safe.
     cache = m.dict()
     missing_types = m.dict()
     for ele in all_elements:
         cache[ele] = m.dict()
         missing_types[ele] = m.dict()
-    with Pool() as p:
+    futures = {}
+    # with Pool() as p:
+    with Executor() as e:
         for i, molecule in enumerate(mols):
-            p.apply_async(processing, args=(i, molecule, box, missing_types, cache, meta[i], default_types))
-        p.close()
-        p.join()
+            args = (i, molecule, box, missing_types, cache, meta[i], default_types)
+            futures[i] = e.submit(processing, *args)
     missing_types = dict(missing_types)
     for ele in all_elements:
         missing_types[ele] = dict(missing_types[ele])
     print_missing_type(missing_types)
+    for i in futures:
+        if futures[i].exception() is not None:  # catch errors first
+            print(f"Errors in {i}th molecule: {futures[i].result()}")
+        elif futures[i].result() == 0:
+            print(f"Molecule {i} is not generated, please re-check force field parameters.")
 
 
 if __name__ == "__main__":
@@ -98,7 +127,9 @@ if __name__ == "__main__":
 
     cg_sys, cg_mols = read_cg_topology(xml, molecules)
     reactor = Reactor(molecules, reaction_template)
+
     # find tri / di reactions for PFR
+    # should be read from xml.data['reaction'] directly
     reactions = []
     for monomer in cg_sys.nodes:
         _type = cg_sys.nodes[monomer]['type']
@@ -109,6 +140,7 @@ if __name__ == "__main__":
             elif len(cg_sys.adj[monomer]) == 1:
                 a = list(cg_sys.adj[monomer])[0]
                 reactions.append(('di', a, monomer))
+    # end
 
     reactor.process(cg_mols, reactions)
     aa_mols = reactor.aa_molecules
@@ -116,4 +148,4 @@ if __name__ == "__main__":
     [Chem.SanitizeMol(_) for _ in aa_mols]
     aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
     print(f"{len(aa_mols_h)} molecules!")
-    main(aa_mols_h, box, meta)
+    main(aa_mols_h, box, meta, default_types=defaults)
