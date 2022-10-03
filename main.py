@@ -2,11 +2,11 @@ __doc__ = r"""
 An example for pfr chains.
 """
 
-from concurrent.futures import ThreadPoolExecutor as Executor  # io-bound
+import os.path
 from concurrent.futures import ProcessPoolExecutor as Executor  # cpu-bound jobs
+from concurrent.futures import ThreadPoolExecutor as Executor  # io-bound
 from multiprocessing import Manager
 from sys import argv
-import os.path
 
 from rdkit import Chem
 
@@ -90,6 +90,20 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
     # mol = Chem.AddHs(mol)
     # AllChem.EmbedMolecule(mol)
     # pdb = Chem.MolToPDBFile(mol, '%06d.pdb' % i)
+
+
+# Serial ver.
+# def main(mols, box, meta, default_types=None):
+#     cache = dict()
+#     missing_types = dict()
+#     res = {}
+#     for i, molecule in enumerate(mols):
+#         args = (i, molecule, box, missing_types, cache, meta[i], default_types)
+#         res[i] = processing(*args)
+#     print_missing_type(missing_types)
+#     for i in res:
+#         if res[i].result() == 0:
+#             print(f"Molecule {i} is not generated, please re-check force field parameters.")
 
 
 def main(mols, box, meta, default_types=None):
