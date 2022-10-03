@@ -42,12 +42,13 @@ reaction_template = {
 
 defaults = {
     'N': {
-        #"N(=NC(C)([H])[H])[H]": "@atom:nnn",
+        # comment out some types to test missing type
+        # "N(=NC(C)([H])[H])[H]": "@atom:nnn",
         "N(=N[H])C(C(c)(c)[H])([H])[H]": "@atom:nnn",
         "N(=N[H])C(C(O)(c)[H])([H])[H]": "@atom:nnn",
     },
     'H': {
-        #'[H]N=NC': "@atom:nnn",
+        # '[H]N=NC': "@atom:nnn",
     },
     'C': {
         "C(N=N[H])(C(c(c)c)(c(c)c)[H])([H])[H]": "@atom:nnn",
@@ -111,7 +112,7 @@ def main(mols, box, meta, default_types=None, draw=False):
     for _mol in mols:
         for atom in _mol.GetAtoms():
             all_elements.add(atom.GetSymbol())
-    m = Manager()  # parallel-safe.
+    m = Manager()  # worry not, it's atomic
     cache = m.dict()
     missing_types = m.dict()
     for ele in all_elements:
