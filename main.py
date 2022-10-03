@@ -13,8 +13,8 @@ from rdkit import Chem
 from lib.cgTopology import read_cg_topology
 from lib.forceField.opls import ff
 from lib.forceField.printMissingType import print_missing_type
-from lib.io.xmlWriter import write_xml
 from lib.io.xmlParser import XmlParser
+from lib.io.xmlWriter import write_xml
 from lib.reactor import Reactor
 from lib.utils import set_molecule_id_for_h
 
@@ -42,12 +42,12 @@ reaction_template = {
 
 defaults = {
     'N': {
-        "N(=NC(C)([H])[H])[H]": "@atom:nnn",
+        #"N(=NC(C)([H])[H])[H]": "@atom:nnn",
         "N(=N[H])C(C(c)(c)[H])([H])[H]": "@atom:nnn",
         "N(=N[H])C(C(O)(c)[H])([H])[H]": "@atom:nnn",
     },
     'H': {
-        '[H]N=NC': "@atom:nnn",
+        #'[H]N=NC': "@atom:nnn",
     },
     'C': {
         "C(N=N[H])(C(c(c)c)(c(c)c)[H])([H])[H]": "@atom:nnn",
@@ -106,7 +106,7 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
 #             print(f"Molecule {i} is not generated, please re-check force field parameters.")
 
 
-def main(mols, box, meta, default_types=None):
+def main(mols, box, meta, default_types=None, draw=False):
     all_elements = set()
     for _mol in mols:
         for atom in _mol.GetAtoms():
@@ -120,12 +120,14 @@ def main(mols, box, meta, default_types=None):
     futures = {}
     with Executor() as e:
         for i, molecule in enumerate(mols):
+            if i != 3:
+                continue
             args = (i, molecule, box, missing_types, cache, meta[i], default_types)
             futures[i] = e.submit(processing, *args)
     missing_types = dict(missing_types)
     for ele in all_elements:
         missing_types[ele] = dict(missing_types[ele])
-    print_missing_type(missing_types)
+    print_missing_type(missing_types, draw=draw)
     for i in futures:
         if futures[i].exception() is not None:  # catch errors first
             print(f"Errors in {i}th molecule: {futures[i].result()}")
@@ -161,4 +163,4 @@ if __name__ == "__main__":
     [Chem.SanitizeMol(_) for _ in aa_mols]
     aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
     print(f"{len(aa_mols_h)} molecules!")
-    main(aa_mols_h, box, meta, default_types=defaults)
+    main(aa_mols_h, box, meta, default_types=defaults, draw=True)

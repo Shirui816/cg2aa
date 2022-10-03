@@ -1,4 +1,9 @@
-def print_missing_type(chem_envs):
+from rdkit import Chem
+
+from lib.draw_molecule_ascii import print_mol_ascii
+
+
+def print_missing_type(chem_envs, draw=False):
     flag = True
     for ele in chem_envs:
         for chem_env in chem_envs[ele]:
@@ -14,6 +19,12 @@ def print_missing_type(chem_envs):
             atom_type = chem_envs[ele][chem_env]
             if atom_type is None:
                 flag = False
+                if draw:
+                    try:
+                        s = print_mol_ascii(Chem.MolFromSmiles(chem_env, sanitize=False))
+                        print(s)
+                    except:
+                        print("Drawing failed!")
                 print(
                     f"Chemical env for *{ele} -IN- *{chem_env} is "
                     "NOT FOUND in database and there is no default type."
