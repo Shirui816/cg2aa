@@ -13,7 +13,7 @@ from rdkit import Chem
 from lib.cgTopology import read_cg_topology
 from lib.forceField.opls import ff
 from lib.forceField.printMissingType import print_missing_type
-from lib.io.writer import write_xml
+from lib.io.xmlWriter import write_xml
 from lib.io.xmlParser import XmlParser
 from lib.reactor import Reactor
 from lib.utils import set_molecule_id_for_h
