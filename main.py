@@ -40,6 +40,7 @@ reaction_template = {
     }
 }
 
+# missing types for N=NC=O
 defaults = {
     'N': {
         # comment out some types to test missing type
