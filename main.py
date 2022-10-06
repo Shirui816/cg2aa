@@ -24,7 +24,7 @@ from lib.utils import set_molecule_id_for_h
 # Read this part from file
 molecules = {
     'A': {'smiles': 'Oc1ccccc1', 'pdb': None},
-    'B': {'smiles': 'C=O', 'pdb': None},  # not real molecule, for testing missing types
+    'B': {'smiles': 'C=O', 'pdb': None},  # E.g. N=NC=O (not real molecule) for testing missing types
 }
 
 reaction_template = {
