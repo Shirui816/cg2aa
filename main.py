@@ -24,7 +24,7 @@ from lib.utils import set_molecule_id_for_h
 # Read this part from file
 molecules = {
     'A': {'smiles': 'Oc1ccccc1', 'pdb': None},
-    'B': {'smiles': 'N=NCC=O', 'pdb': None},  # not real molecule, for testing missing types
+    'B': {'smiles': 'C=O', 'pdb': None},  # not real molecule, for testing missing types
 }
 
 reaction_template = {
@@ -48,7 +48,7 @@ defaults = {
         "N(=N[H])C(C(O)(c)[H])([H])[H]": "@atom:nnn",
     },
     'H': {
-        # '[H]N=NC': "@atom:nnn",
+        '[H]N=NC': "@atom:nnn",
     },
     'C': {
         "C(N=N[H])(C(c(c)c)(c(c)c)[H])([H])[H]": "@atom:nnn",
