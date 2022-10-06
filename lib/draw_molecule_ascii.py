@@ -101,6 +101,18 @@ def print_mol_ascii(mol_raw, highlight=0):
         midy_bond.append(middle)
     # xy coordinates of center of bonds (*) to plot
     bond_center_points = list(zip(midx_bond, midy_bond))
+    bond_symbol_list = []
+    for bt in bond_type:
+        if np.isclose(bt, 1):
+            bond_symbol_list.append('-')
+        elif np.isclose(bt, 1.5):
+            bond_symbol_list.append(':')
+        elif np.isclose(bt, 2):
+            bond_symbol_list.append('=')
+        elif np.isclose(bt, 3):
+            bond_symbol_list.append('#')
+        else:
+            bond_symbol_list.append('*')
 
     # 6. Setup a max plotting print range based on coordinates
 
@@ -117,9 +129,10 @@ def print_mol_ascii(mol_raw, highlight=0):
     # 7. Print the molecule!
     # Adapted from: https://stackoverflow.com/questions/16240358/ascii-graph-in-python
     # https://creativecommons.org/licenses/by-sa/3.0/
-    bond_symbol = '*'
+    # bond_symbol = '*'
     fill_symbol = ' '
     res = ''
+    bc = 0
     for y in print_range:
         chars = []
         for x in print_range:
@@ -127,6 +140,8 @@ def print_mol_ascii(mol_raw, highlight=0):
                 index_value = norm_atom_coords.index((x, y))
                 chars.append(atom_symbols[index_value])
             elif (x, y) in bond_center_points:
+                bond_symbol = bond_symbol_list[bc]
+                bc += 1
                 chars.append(bond_symbol)
             else:
                 chars.append(fill_symbol)
@@ -143,4 +158,7 @@ def print_mol_ascii(mol_raw, highlight=0):
     while _l.isspace():
         _l = res_l.pop(0)
     res_l.insert(0, _l)
+    res_l.insert(0, "Bond order: Symbol\n1: `-', 1.5: `:', 2: `=', 3: `#', other: `*'")
+    res_l.insert(0, ">" + "-" * 60 + "<")
+    res_l.append(">" + "-" * 60 + "<")
     return '\n'.join(res_l)
