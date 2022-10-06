@@ -59,6 +59,8 @@ defaults = {
 
 # End
 
+
+# this part is for ANY cases
 for key in molecules:
     if not molecules[key]['pdb'] is None:
         mol = Chem.RemoveAllHs(Chem.MolFromPDBFile(molecules[key]['pdb']))
@@ -121,8 +123,6 @@ def main(mols, box, meta, default_types=None, draw=False):
     futures = {}
     with Executor() as e:
         for i, molecule in enumerate(mols):
-            if i != 3:
-                continue
             args = (i, molecule, box, missing_types, cache, meta[i], default_types)
             futures[i] = e.submit(processing, *args)
     missing_types = dict(missing_types)
@@ -135,6 +135,8 @@ def main(mols, box, meta, default_types=None, draw=False):
         elif futures[i].result() == 0:
             print(f"Molecule {i} is not generated, please re-check force field parameters.")
 
+
+# end
 
 if __name__ == "__main__":
     xml = XmlParser(argv[1])
