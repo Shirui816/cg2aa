@@ -1,14 +1,15 @@
 import warnings
 
+from rdkit.Chem import AllChem
+
+from lib.io.utils import generate_pos_fragment
+
 
 def _warning(message, category=None, filename=None, lineno=None, file=None, line=None):
     print("WARNING: ", message)
 
 
 warnings.showwarning = _warning
-
-from lib.io.utils import generate_pos_fragment
-from rdkit.Chem import AllChem
 
 template = '''<?xml version ="1.0" encoding ="UTF-8" ?>
 <{program}_xml version="{version}">
