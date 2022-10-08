@@ -4,7 +4,7 @@ An example for pfr chains.
 
 import os.path
 from concurrent.futures import ProcessPoolExecutor as Executor  # cpu-bound jobs
-from concurrent.futures import ThreadPoolExecutor as Executor  # io-bound
+# from concurrent.futures import ThreadPoolExecutor as Executor  # io-bound
 from multiprocessing import Manager
 from sys import argv
 
