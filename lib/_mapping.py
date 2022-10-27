@@ -10,6 +10,7 @@ contains meta-position (and o-position) C if all atoms in reaction SMARTS are re
 cases where SMARTS contains non-reacting atoms.
 """
 
+# Isn't this a database? a temporary table will make searching much easier.
 atom_info = namedtuple('atom_info',
                        ('reactant_id', 'reactant_atom_id', 'product_id', 'product_atom_id', 'atomic_number'))
 bond_info = namedtuple('bond_info',
