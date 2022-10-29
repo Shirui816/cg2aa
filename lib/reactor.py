@@ -36,8 +36,14 @@ def allowed_p(reacted_atoms, cg_reactants, reaction):
         # choose the proper candidate with all functional groups are idle.
         allowed = True
         for ri in reaction_map[0]:
-            if set.issubset(set(reaction_map[0][ri]), reacted_atoms[ri]):  # only idle function groups
+            if set.intersection(set(reaction_map[0][ri]), reacted_atoms[ri]):
+                # not necessarily subset, e.g.,
+                # reaction 1 takes {0,1},{10,11} but reaction 2 takes {0,1,2,3}, {10,11,12,13}
+                # if reaction 1 happened with {0,1} already, reacted atoms has intersection with
+                # reaction 2
+                # if set.issubset(set(reaction_map[0][ri]), reacted_atoms[ri]):  # only idle function groups
                 # multi-step reaction_info are considered as reaction_info with all reactants in one step.
+                # FOR ANY ATOM, THERE IS ONLY ONE REACTION, therefore intersection is fine.
                 allowed = False
         if allowed:
             return reaction_map, reaction.prod_idx
@@ -186,5 +192,7 @@ class Reactor(object):
             rm_all = sorted(list(set(rm_all)), reverse=True)
             for bi in rm_all:
                 aa_mol.RemoveAtom(bi)
+            # print(Chem.MolToSmiles(aa_mol))
+            # Chem.SanitizeMol(aa_mol)
             self.aa_molecules.append(Chem.RemoveAllHs(aa_mol))
             self.meta.append(mol_meta)
