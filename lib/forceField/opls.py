@@ -4,6 +4,8 @@ import warnings
 
 from rdkit import Chem
 
+from lib.forceField.utils import get_type_from_cache, get_submol_rad_n
+
 
 def _warning(message, category=None, filename=None, lineno=None, file=None, line=None):
     print("WARNING: ", message)
@@ -38,22 +40,6 @@ def generate_feature_defn(fpath):
                 # add new charge dictionary entry
                 feat_index += 1
     return info, feature_defn
-
-
-def get_submol_rad_n(mol, radius, atom):
-    env = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, atom.GetIdx(), useHs=True)
-    amap = {}
-    sub_mol = Chem.PathToSubmol(mol, env, atomMap=amap)
-    return sub_mol, amap, env
-
-
-def get_type_from_cache(molecule, atom, chem_envs_cache, hash_cut):
-    sub_mol, sub_mol_amap, sub_env = get_submol_rad_n(molecule, hash_cut, atom)  # 3 is good enough for hash
-    atom_env_hash = Chem.MolToSmiles(sub_mol, rootedAtAtom=sub_mol_amap[atom.GetIdx()], canonical=False)
-    if chem_envs_cache.get(atom.GetSymbol()) is None:
-        chem_envs_cache[atom.GetSymbol()] = {}
-    atom_type = chem_envs_cache[atom.GetSymbol()].get(atom_env_hash)
-    return atom_type, atom_env_hash
 
 
 def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **kwargs):
