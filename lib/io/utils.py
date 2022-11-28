@@ -41,10 +41,12 @@ def generate_pos_fragment(molecule, meta):
         count = 0
         broke = set()
         for monomer_id in fragment_ids:  # Get current monomer
-            for atom_id in atom_map[monomer_id]:
-                local_map1[atom_id] = count
-                local_map2[count] = atom_id  # map monomer to polymer
-                count += 1
+            atoms = atom_map.get(monomer_id)
+            if atoms is not None:
+                for atom_id in atoms:
+                    local_map1[atom_id] = count
+                    local_map2[count] = atom_id  # map monomer to polymer
+                    count += 1
         for i in range(count):
             atom_id = local_map2[i]
             atom = molecule.GetAtomWithIdx(atom_id)
