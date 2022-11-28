@@ -42,16 +42,16 @@ template = '''<?xml version ="1.0" encoding ="UTF-8" ?>
 LARGE = 500
 
 
-def write_xml(molecule, box, bonds, angles, dihedrals, postfix, program='galamost', version='1.3'):
+def write_xml(molecule, meta, box, bonds, angles, dihedrals, postfix, program='galamost', version='1.3'):
     if molecule.GetNumAtoms() > LARGE:
         warnings.warn(f"*** Num of atoms {molecule.GetNumAtoms()} is greater than {LARGE}, using fragment method.")
-        conf = generate_pos_fragment(molecule)
+        conf = generate_pos_fragment(molecule, meta)
         if len(conf.x) != molecule.GetNumAtoms():
             warnings.warn(f"*** configuration generation error! {len(conf.x)} != {molecule.GetNumAtoms()}")
     else:
         conf_id = AllChem.EmbedMolecule(molecule, useRandomCoords=True)
         if conf_id == -1:
-            conf = generate_pos_fragment(molecule)
+            conf = generate_pos_fragment(molecule, meta)
             if len(conf.x) != molecule.GetNumAtoms():
                 warnings.warn(f"*** configuration generation error! {len(conf.x)} != {molecule.GetNumAtoms()}")
         else:

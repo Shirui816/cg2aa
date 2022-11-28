@@ -77,7 +77,7 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
                 atom = plm.GetAtomWithIdx(idx)
                 atom.SetIntProp('molecule_id', int(m))
         plm = set_molecule_id_for_h(plm)
-        write_xml(plm, box, bonds, angles, dihedrals, '%06d' % i)
+        write_xml(plm, meta, box, bonds, angles, dihedrals, '%06d' % i)
         return 1
     return 0
     # mol = Chem.AddHs(mol)
