@@ -83,7 +83,9 @@ def generate_pos_fragment(molecule, meta):
             # but not important, for the truncated monomers are not used
             # raise ValueError(f"{res}, {Chem.MolToSmiles(fragment)}")
         _mh = AllChem.AddHs(fragment)
-        AllChem.EmbedMolecule(_mh, useRandomCoords=True)
+        conf_id = AllChem.EmbedMolecule(_mh, useRandomCoords=True)
+        if conf_id == -1:
+            raise ValueError(f"Molecule fragment generation failed!\n{Chem.MolToSmiles(_mh)}")
         _conf = _mh.GetConformer(0)
         for atom in _mh.GetAtoms():
             if local_map2.get(atom.GetIdx()) is None:
