@@ -42,16 +42,16 @@ template = '''<?xml version ="1.0" encoding ="UTF-8" ?>
 LARGE = 500
 
 
-def write_xml(molecule, meta, box, bonds, angles, dihedrals, postfix, program='galamost', version='1.3'):
+def write_xml(molecule, cg_mol, box, bonds, angles, dihedrals, postfix, program='galamost', version='1.3'):
     if molecule.GetNumAtoms() > LARGE:
         warnings.warn(f"*** Num of atoms {molecule.GetNumAtoms()} is greater than {LARGE}, using fragment method.")
-        conf = generate_pos_fragment(molecule, meta)
+        conf = generate_pos_fragment(molecule, cg_mol)
         if len(conf.x) != molecule.GetNumAtoms():
             warnings.warn(f"*** configuration generation error! {len(conf.x)} != {molecule.GetNumAtoms()}")
     else:
         conf_id = AllChem.EmbedMolecule(molecule, useRandomCoords=True)
         if conf_id == -1:
-            conf = generate_pos_fragment(molecule, meta)
+            conf = generate_pos_fragment(molecule, cg_mol)
             if len(conf.x) != molecule.GetNumAtoms():
                 warnings.warn(f"*** configuration generation error! {len(conf.x)} != {molecule.GetNumAtoms()}")
         else:
@@ -64,7 +64,8 @@ def write_xml(molecule, meta, box, bonds, angles, dihedrals, postfix, program='g
         types += '%s\n' % atom.GetProp("ElementType")
         opls_type += '%s\n' % atom.GetProp("OplsType")
         pos = conf.GetAtomPosition(atom.GetIdx())
-        positions += '%.6f %.6f %.6f\n' % (pos.x, pos.y, pos.z)
+        pcm = cg_mol.nodes[atom.GetIntProp('molecule_id')]['x']
+        positions += '%.6f %.6f %.6f\n' % (pos.x/10+pcm[0], pos.y/10+pcm[1], pos.z/10+pcm[2]) # in nm
         charge += '%.6f\n' % float(atom.GetProp("Charge"))
         monomer_id += '%d\n' % atom.GetIntProp("molecule_id")
     n_angles = len(angles)

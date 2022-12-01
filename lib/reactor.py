@@ -58,9 +58,9 @@ class Reactor(object):
         {cg_reactant_list: [(A,B), ...], smarts: <smarts>, prod_idx: [0,1,..]}}
         """
         self.reactants_meta = reactants_meta
-        self.cg_molecules = None
-        self.aa_molecules = []
-        self.meta = []
+        # self.cg_molecules = None
+        # self.aa_molecules = []
+        # self.meta = []
         self.reaction_templates = {}
         for reaction_name in reaction_templates:
             _info = reaction_templates[reaction_name]
@@ -74,7 +74,8 @@ class Reactor(object):
         :param reactions: list of reaction_info, [(reaction_name, i, j, k,...),]
         :return: aa_system and meta info
         """
-        self.cg_molecules = cg_molecules
+        aa_molecules = []
+        meta = []
         reaction_hash = reaction_mol_mapping(reactions)  # build reaction hash: {node: set(reactions1,...)}
         for _i, cg_mol in enumerate(cg_molecules):
             # generate per cg mol, for removing atom is slow for large molecules
@@ -194,5 +195,6 @@ class Reactor(object):
                 aa_mol.RemoveAtom(bi)
             # print(Chem.MolToSmiles(aa_mol))
             # Chem.SanitizeMol(aa_mol)
-            self.aa_molecules.append(Chem.RemoveAllHs(aa_mol))
-            self.meta.append(mol_meta)
+            aa_molecules.append(Chem.RemoveAllHs(aa_mol))
+            meta.append(mol_meta)
+        return aa_molecules, meta

@@ -64,7 +64,7 @@ for key in molecules:
 #     pdb = Chem.MolToPDBFile(mol, '%s.pdb' % key)
 
 
-def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
+def processing(i, mol, cg_mol, box, mt, ch, meta, defaults, radius=7):
     f_name = f"out_{i:06d}.xml"
     if os.path.isfile(f_name):  # skip existing files
         return 2
@@ -77,7 +77,7 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
                 atom = plm.GetAtomWithIdx(idx)
                 atom.SetIntProp('molecule_id', int(m))
         plm = set_molecule_id_for_h(plm)
-        write_xml(plm, meta, box, bonds, angles, dihedrals, '%06d' % i)
+        write_xml(plm, cg_mol, box, bonds, angles, dihedrals, '%06d' % i)
         return 1
     return 0
     # mol = Chem.AddHs(mol)
@@ -99,7 +99,7 @@ def processing(i, mol, box, mt, ch, meta, defaults, radius=7):
 #             print(f"Molecule {i} is not generated, please re-check force field parameters.")
 
 
-def main(mols, box, meta, default_types=None, draw=False):
+def main(mols, box, cg_mols, meta, default_types=None, draw=False):
     all_elements = set()
     for _mol in mols:
         for atom in _mol.GetAtoms():
@@ -113,7 +113,7 @@ def main(mols, box, meta, default_types=None, draw=False):
     futures = {}
     with Executor() as e:
         for i, molecule in enumerate(mols):
-            args = (i, molecule, box, missing_types, cache, meta[i], default_types)
+            args = (i, molecule, cg_mols[i], box, missing_types, cache, meta[i], default_types)
             futures[i] = e.submit(processing, *args)
     missing_types = dict(missing_types)
     for ele in all_elements:
@@ -145,10 +145,8 @@ if __name__ == "__main__":
         reactions.append(('tri', r[0], r[1], r[2]))
     # end
 
-    reactor.process(cg_mols, reactions)
-    aa_mols = reactor.aa_molecules
-    meta = reactor.meta
+    aa_mols, meta = reactor.process(cg_mols, reactions)
     [Chem.SanitizeMol(_) for _ in aa_mols]
     aa_mols_h = [Chem.AddHs(m) for m in aa_mols]
     print(f"{len(aa_mols_h)} molecules!")
-    main(aa_mols_h, box, meta, default_types=defaults, draw=True)
+    main(aa_mols_h, box, cg_mols, meta, default_types=defaults, draw=True)

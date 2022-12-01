@@ -20,7 +20,7 @@ class FakeConf():
         return self.x.get(idx)
 
 
-def generate_pos_fragment(molecule, meta):
+def generate_pos_fragment(molecule, cg_mol):
     conf = FakeConf(molecule.GetNumAtoms())
     atom_map = {}
     for atom in molecule.GetAtoms():
@@ -28,13 +28,14 @@ def generate_pos_fragment(molecule, meta):
         if not atom_map.get(monomer_id):
             atom_map[monomer_id] = []
         atom_map[monomer_id].append(atom.GetIdx())
-    adj_dict = dict(meta.adjacency())
-    for m_id in meta.nodes:
+    # adj_dict = dict(cg_mol.adjacency())
+    for m_id in cg_mol.nodes:
         # generate position of A by its neighbor monomers
         # to obtain better monomer-monomer connections
-        n_ids = list(adj_dict[m_id].keys())
+        # n_ids = list(adj_dict[m_id].keys())
         fragment = Chem.RWMol()
-        fragment_ids = [m_id] + n_ids
+        fragment_ids = [m_id] # + n_ids
+        # only current monomer, multiple monomers may contain loops with broken aromatic atoms
         bonds = set()
         local_map1 = {}
         local_map2 = {}
