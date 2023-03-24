@@ -36,13 +36,16 @@ template = '''<?xml version ="1.0" encoding ="UTF-8" ?>
 <dihedral num="{n_dihedrals:d}">
 {dihedral}
 </dihedral>
+<improper num="{n_impropers:d}">
+{improper}
+</improper>
 </configuration>
 </{program}_xml>'''
 
 LARGE = 500
 
 
-def write_xml(molecule, cg_mol, box, bonds, angles, dihedrals, postfix, program='galamost', version='1.3'):
+def write_xml(molecule, cg_mol, box, bonds, angles, dihedrals, impropers, postfix, program='galamost', version='1.3'):
     if molecule.GetNumAtoms() > LARGE:
         warnings.warn(f"*** Num of atoms {molecule.GetNumAtoms()} is greater than {LARGE}, using fragment method.")
         conf = generate_pos_fragment(molecule, cg_mol)
@@ -70,16 +73,19 @@ def write_xml(molecule, cg_mol, box, bonds, angles, dihedrals, postfix, program=
         monomer_id += '%d\n' % atom.GetIntProp("molecule_id")
     n_angles = len(angles)
     n_dihedrals = len(dihedrals)
+    n_impropers = len(impropers)
     angle = '\n'.join(angles)
     dihedral = '\n'.join(dihedrals)
     bond = '\n'.join(bonds)
+    improper = '\n'.join(impropers)
     lx, ly, lz, xy, xz, yz = box
     o = open('out_%s.xml' % postfix, 'w')
     o.write(
         template.format(
             n_atoms=n_atoms, n_bonds=n_bonds, mass=mass, types=types, opls_type=opls_type, positions=positions,
             bond=bond, charge=charge, angle=angle, dihedral=dihedral, n_angles=n_angles, n_dihedrals=n_dihedrals,
-            monomer_id=monomer_id, program=program, version=version, lx=lx, ly=ly, lz=lz, xy=xy, xz=xz, yz=yz
+            monomer_id=monomer_id, program=program, version=version, lx=lx, ly=ly, lz=lz, xy=xy, xz=xz, yz=yz,
+            n_impropers=n_impropers, improper=improper
         ))
     o.close()
     return
