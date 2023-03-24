@@ -10,11 +10,11 @@ from sys import argv
 
 from rdkit import Chem
 
-from lib.cgTopology import read_cg_topology
-from lib.forceField.opls import ff
-from lib.forceField.printMissingType import print_missing_type
-from lib.io.xmlParser import XmlParser
-from lib.io.xmlWriter import write_xml
+from lib.cg_topology import read_cg_topology
+from lib.force_field.opls import ff
+from lib.force_field.printMissingType import print_missing_type
+from lib.io.xml_parser import XmlParser
+from lib.io.xml_writer import write_xml
 from lib.reactor import Reactor
 from lib.utils import set_molecule_id_for_h
 

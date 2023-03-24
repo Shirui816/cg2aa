@@ -4,7 +4,7 @@ import warnings
 
 from rdkit import Chem
 
-from lib.forceField.utils import get_type_from_cache, get_submol_rad_n
+from lib.force_field.utils import get_type_from_cache, get_submol_rad_n
 
 
 def _warning(message, category=None, filename=None, lineno=None, file=None, line=None):
