@@ -145,6 +145,7 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
     bonds = []
     angles = []
     dihedrals = []
+    impropers = []
     for bond in molecule.GetBonds():  # bonds
         i, j = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
         atom_i = molecule.GetAtomWithIdx(i)
@@ -166,8 +167,13 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
                             atom_i.GetProp("ElementType"),
                             atom_j.GetProp("ElementType"),
                             nbr_j.GetProp("ElementType")]
-                if re.search(r'\s*'.join(dihedral) + r'\s*[1-9]+', bonded_itp) or re.search(
-                        r'\s*'.join(dihedral[::-1]) + r'\s*[1-9]+', bonded_itp):
+                flag = re.search(r'\s*'.join(dihedral) + r'\s*[1-9]+', bonded_itp) or re.search(
+                        r'\s*'.join(dihedral[::-1]) + r'\s*[1-9]+', bonded_itp) or re.search(
+                    r'\s*'.join(['X', dihedral[1], dihedral[2], 'X']) + r'\s*[1-9]+', bonded_itp) or re.search(
+                    r'\s*'.join(['X', dihedral[2], dihedral[1], 'X']) + r'\s*[1-9]+', bonded_itp) or re.search(
+                    r'\s*'.join([dihedral[0], dihedral[1], dihedral[2], 'X']) + r'\s*[1-9]+', bonded_itp) or re.search(
+                    r'\s*'.join([dihedral[2], dihedral[1], dihedral[0], 'X']) + r'\s*[1-9]+', bonded_itp)
+                if flag:
                     dihedrals.append('%s %d %d %d %d' % ('-'.join(dihedral), ni, i, j, nj))
 
     for atom in molecule.GetAtoms():  # any atom can be a center of an angle
@@ -179,5 +185,37 @@ def ff(molecule, chem_envs_cache=None, chem_envs=None, large=500, hash_cut=3, **
                 if re.search(r'\s*'.join(angle) + r'\s*[1-9]+', bonded_itp) or re.search(
                         r'\s*'.join(angle[::-1]) + r'\s*[1-9]+', bonded_itp):
                     angles.append('%s %d %d %d' % ('-'.join(angle), nbr_i.GetIdx(), atom.GetIdx(), nbr_j.GetIdx()))
-
-    return molecule, bonds, angles, dihedrals
+        # improper
+        if len(atom.GetNeighbors()) == 3:
+            perms_nb = permutations(atom.GetNeighbors())
+            for perm in perms_nb:
+                dihedral = [perm[0].GetProp("ElementType"),
+                            atom.GetProp("ElementType"),
+                            perm[1].GetProp("ElementType"),
+                            perm[2].GetProp("ElementType")]
+                d_str = '-'.join(dihedral)
+                if re.search(r'O.*-(C|C_2|C_3)-.*-.*', d_str):
+                    impropers.append('improper_O_C_X_Y:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+                elif re.search(r'.*-NO-ON-NO', d_str):
+                    impropers.append('improper_X_NO_ON_NO:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+                elif re.search(r'N2-.*-N2-N2', d_str):
+                    impropers.append('improper_N2_X_N2_N2:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+                elif re.search(r'.*-N.*-.*-.*', d_str):
+                    impropers.append('improper_Z_N_X_Y:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+                elif re.search(r'.*-(CM|C=)-.*-.*', d_str):
+                    impropers.append('improper_Z_CM_X_Y:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+                elif re.search(r'.*-(CM|CA|CB|CN|CV|CW|CR|CK|CQ|CS|C*)-.*-.*', d_str):
+                    impropers.append('improper_Z_CA_X_Y:%s %d %d %d %d' %
+                                     (d_str, perm[0].GetIdx(), atom.GetIdx(), perm[1].GetIdx(), perm[2].GetIdx()))
+                    break
+    return molecule, bonds, angles, dihedrals, impropers
