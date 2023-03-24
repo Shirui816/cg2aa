@@ -81,14 +81,14 @@ def processing(i, mol, cg_mol, box, mt, ch, meta, defaults, radius=7):
         return 2
     ret = ff(mol, chem_envs=mt, chem_envs_cache=ch, large=500, defaults=defaults, radius=radius)
     if ret is not None:
-        plm, bonds, angles, dihedrals = ret
+        plm, bonds, angles, dihedrals, imporpers = ret
         for m in meta.nodes:  # set monomer id
             molecule = meta.nodes[m]
             for idx in molecule['atom_idx'].values():
                 atom = plm.GetAtomWithIdx(idx)
                 atom.SetIntProp('molecule_id', int(m))
         plm = set_molecule_id_for_h(plm)
-        write_xml(plm, cg_mol, box, bonds, angles, dihedrals, '%06d' % i)
+        write_xml(plm, cg_mol, box, bonds, angles, dihedrals, imporpers, '%06d' % i)
         return 1
     return 0
     # mol = Chem.AddHs(mol)
